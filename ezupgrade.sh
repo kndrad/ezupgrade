@@ -36,7 +36,8 @@ yarn cache clean
 npm cache clean --force
 
 # clean pip cache
-pip cache purge
+# uncomment if you have pip installed
+#pip cache purge
 
 # clean thumbnails cache
 rm -rf ~/.cache/thumbnails/*
