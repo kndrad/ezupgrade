@@ -1,54 +1,44 @@
 #!/bin/sh
 
-read -p "Do you want to upgrade using pacman or yay? (pac/yay): " choice
+read -p "Use pacman or yay? (pac/yay): " choice
 
 if [ "$choice" = "pac" ]; then
-    # upgrade using pacman and clean
-    sudo pacman -Syu --noconfirm
+    sudo pacman-key --refresh-keys
+    if ! sudo pacman -Syu --noconfirm; then
+        echo "Error: System upgrade failed"
+        exit 1
+    fi
     sudo paccache -r
 else
-    # yay upgrade and clean
     yay -Syu --noconfirm
     yay -Scc --noconfirm
 fi
 
-# orphans and dropped packages removal
 sudo pacman -Qtdq
 sudo pacman -Rns $(pacman -Qtdq)
-
-# remove cached package files
 sudo pacman -Sc --noconfirm
-
-# remove unused packages (optional)
 sudo pacman -Rns $(pacman -Qtdq) --noconfirm
 
-# remove old configuration files
-sudo find /etc -name "*.pacsave" -delete
-sudo find /etc -name "*.pacnew" -delete
+sudo journalctl --vacuum-time=2weeks || log_error "Failed to vacuum journalctl"
 
-# clean journal logs (optional)
-sudo journalctl --vacuum-time=2weeks
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
 
-# clean yarn cache
-yarn cache clean
+if command_exists npm; then
+    NODE_NO_WARNING=1 npm cache clean --force || log_error "Failed to clean npm cache"
+fi
 
-# clean npm cache
-npm cache clean --force
+if command_exists npm; then
+    yarn cache clean || log_error "Failed to clean yarn cache"
+fi
 
-# clean pip cache
-# uncomment if you have pip installed
-#pip cache purge
-
-# clean thumbnails cache
 rm -rf ~/.cache/thumbnails/*
 
-# clean recent documents history
 rm -f ~/.local/share/recently-used.xbel
 rm -f ~/.recently-used
+rm -rf ~/.local/share/Trash/* 2>/dev/null
+sudo rm -rf /tmp/* 2>/dev/null
 
-# clean trash and temporary files
-rm -rf ~/.local/share/Trash/*
-sudo rm -rf /tmp/*
-
-# clean broken symlinks
-find ~ -xtype l -delete
+# broken symlinks cleanup
+find ~ -xtype l -delete 2>/dev/null
